@@ -123,4 +123,5 @@ else:
                     make_move(i, room_id)
                     st.rerun()
 
+
     render_board()
