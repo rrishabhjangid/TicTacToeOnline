@@ -95,7 +95,7 @@ if not st.session_state.room:
         
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("✨ Create Room (Play as ❌)", use_container_width=True, type="primary"):
+            if st.button("✨ Create Room (Play as ❌)", use_container_width=True):
                 if room_input:
                     db[room_input] = {
                         "board": [""] * 9,
@@ -117,3 +117,4 @@ if not st.session_state.room:
                         st.rerun()
                     else:
                         st
+
