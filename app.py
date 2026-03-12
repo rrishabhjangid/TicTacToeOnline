@@ -1,9 +1,52 @@
 import streamlit as st
 
-st.set_page_config(page_title="Multiplayer Tic-Tac-Toe", page_icon="🎮")
+# Must be the very first Streamlit command
+st.set_page_config(page_title="Premium Tic-Tac-Toe", page_icon="✨", layout="centered")
+
+# --- 0. PREMIUM UI CSS ---
+st.markdown("""
+    <style>
+    /* Gradient Title */
+    .premium-title {
+        text-align: center;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-weight: 800;
+        font-size: 3rem;
+        background: -webkit-linear-gradient(45deg, #FF4B4B, #9B51E0);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0px;
+    }
+    
+    /* Subtitle centering */
+    .premium-subtitle {
+        text-align: center;
+        color: #888888;
+        font-size: 1.1rem;
+        margin-bottom: 30px;
+    }
+
+    /* Game Board Tiles */
+    div[data-testid="stButton"] > button {
+        height: 120px;
+        font-size: 3.5rem !important;
+        font-weight: bold;
+        border-radius: 16px;
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        transition: all 0.2s ease-in-out;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    /* Hover effect for tiles */
+    div[data-testid="stButton"] > button:hover {
+        border-color: #9B51E0;
+        box-shadow: 0 8px 20px rgba(155, 81, 224, 0.4);
+        transform: translateY(-2px);
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # --- 1. SHARED DATABASE (In-Memory) ---
-# st.cache_resource keeps this dictionary alive across all user browsers
 @st.cache_resource
 def get_database():
     return {}
@@ -11,13 +54,12 @@ def get_database():
 db = get_database()
 
 # --- 2. LOCAL SESSION STATE ---
-# Keeps track of who THIS specific browser belongs to
 if "my_player" not in st.session_state:
     st.session_state.my_player = None
 if "room" not in st.session_state:
     st.session_state.room = None
 
-# --- HELPER FUNCTIONS ---
+# --- 3. HELPER FUNCTIONS ---
 def check_winner(board):
     win_conditions = [
         [0, 1, 2], [3, 4, 5], [6, 7, 8], # Rows
@@ -34,94 +76,44 @@ def check_winner(board):
 def make_move(i, room_id):
     game = db[room_id]
     if game["board"][i] == "" and game["winner"] is None and game["turn"] == st.session_state.my_player:
-        game["board"][i] = st.session_state.my_player
+        # Use emojis for a better look
+        game["board"][i] = "❌" if st.session_state.my_player == "X" else "⭕"
         game["winner"] = check_winner(game["board"])
-        # Switch turns
         game["turn"] = "O" if st.session_state.my_player == "X" else "X"
 
-# --- UI & APP FLOW ---
-st.title("🌐 Online Multiplayer Tic-Tac-Toe")
+# --- 4. UI & APP FLOW ---
+st.markdown("<div class='premium-title'>Tic-Tac-Toe Online</div>", unsafe_allow_html=True)
+st.markdown("<div class='premium-subtitle'>Play with anyone, anywhere.</div>", unsafe_allow_html=True)
 
-# LOBBY: If the user isn't in a room yet
+# LOBBY
 if not st.session_state.room:
-    st.markdown("### Join or Create a Room")
-    st.write("Share the room name with your friend so they can join you!")
-    room_input = st.text_input("Enter a Room Name (e.g., 'secret-room-1')")
-
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Create Room (Play as X)", use_container_width=True):
-            if room_input:
-                # Initialize the room in the shared database
-                db[room_input] = {
-                    "board": [""] * 9,
-                    "turn": "X",
-                    "winner": None,
-                    "players": ["X"]
-                }
-                st.session_state.my_player = "X"
-                st.session_state.room = room_input
-                st.rerun()
-
-    with col2:
-        if st.button("Join Room (Play as O)", use_container_width=True):
-            if room_input in db:
-                if "O" not in db[room_input]["players"]:
-                    db[room_input]["players"].append("O")
-                    st.session_state.my_player = "O"
+    with st.container(border=True):
+        st.markdown("### 🚪 Room Lobby")
+        room_input = st.text_input("Enter a Room Code:", placeholder="e.g., retro-gaming-1")
+        
+        st.write("") # Spacer
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("✨ Create Room (Play as ❌)", use_container_width=True, type="primary"):
+                if room_input:
+                    db[room_input] = {
+                        "board": [""] * 9,
+                        "turn": "X",
+                        "winner": None,
+                        "players": ["X"]
+                    }
+                    st.session_state.my_player = "X"
                     st.session_state.room = room_input
                     st.rerun()
-                else:
-                    st.error("Room is already full!")
-            else:
-                st.error("Room does not exist. Create it first!")
 
-# GAME BOARD: If the user is inside a room
-else:
-    room_id = st.session_state.room
-    game = db[room_id]
-
-    st.subheader(f"Room: `{room_id}` | You are playing as: **{st.session_state.my_player}**")
-
-    if st.button("Leave Room"):
-        st.session_state.room = None
-        st.session_state.my_player = None
-        st.rerun()
-
-    st.divider()
-
-    # Fragment to auto-refresh only the game board every 2 seconds
-    @st.fragment(run_every="2s")
-    def render_board():
-        # Status messages
-        if game["winner"]:
-            if game["winner"] == "Draw":
-                st.info("🤝 It's a Draw!")
-            else:
-                st.success(f"🎉 Player {game['winner']} wins!")
-        else:
-            if game["turn"] == st.session_state.my_player:
-                st.write("🟢 **It is your turn!**")
-            else:
-                st.write("🔴 **Waiting for opponent to move...**")
-
-        # Draw the 3x3 Grid
-        cols = st.columns(3)
-        for i in range(9):
-            with cols[i % 3]:
-                # Use a zero-width space if empty so the button renders nicely
-                label = game["board"][i] if game["board"][i] != "" else "‎"
-
-                # Disable button if spot is taken, not your turn, or game is over
-                is_disabled = (
-                    game["board"][i] != "" or
-                    game["turn"] != st.session_state.my_player or
-                    game["winner"] is not None
-                )
-
-                if st.button(label, key=f"cell_{i}", disabled=is_disabled, use_container_width=True):
-                    make_move(i, room_id)
-                    st.rerun()
-
-
-    render_board()
+        with col2:
+            if st.button("🤝 Join Room (Play as ⭕)", use_container_width=True):
+                if room_input in db:
+                    if "O" not in db[room_input]["players"]:
+                        db[room_input]["players"].append("O")
+                        st.session_state.my_player = "O"
+                        st.session_state.room = room_input
+                        st.rerun()
+                    else:
+                        st
