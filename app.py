@@ -39,6 +39,12 @@ def make_move(i, room_id):
         # Switch turns
         game["turn"] = "O" if st.session_state.my_player == "X" else "X"
 
+# NEW: Function to reset the shared game state
+def restart_game(room_id):
+    db[room_id]["board"] = [""] * 9
+    db[room_id]["winner"] = None
+    db[room_id]["turn"] = "X" # X always gets to go first in a new game
+
 # --- UI & APP FLOW ---
 st.title("🌐 Online Multiplayer Tic-Tac-Toe")
 
@@ -93,12 +99,17 @@ else:
     # Fragment to auto-refresh only the game board every 2 seconds
     @st.fragment(run_every="2s")
     def render_board():
-        # Status messages
+        # Status messages & Restart Logic
         if game["winner"]:
             if game["winner"] == "Draw":
                 st.info("🤝 It's a Draw!")
             else:
                 st.success(f"🎉 Player {game['winner']} wins!")
+            
+            # NEW: Show 'Play Again' button only when the game is over
+            if st.button("🔄 Play Again", use_container_width=True):
+                restart_game(room_id)
+                st.rerun()
         else:
             if game["turn"] == st.session_state.my_player:
                 st.write("🟢 **It is your turn!**")
